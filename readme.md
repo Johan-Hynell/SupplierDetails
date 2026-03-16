@@ -15,10 +15,25 @@ A simple service that provides information about you (the supplier) to buyers fo
 - Read from config file
 
 ## Example output
+Real output does not contain linebreaks or tabs
 ```json
 {
-"SupplierName":"Example Supplier",
-"SupplierDetails":"An example supplier of products",
-"PEPPOLEndpointID":"0",
-"Country":"Sweden","City":"Lulea","Street":"Luleå University of Technology","Postcode":"SE-97187","ProductList":[{"ProductName":"Example Product","EAN":"0","Details":"An example product to order","PricePerUnit":"123.45","Currency":"SEK","ISO4217":752,"Unit":"EA"}]}
+    "SupplierName":"Example Supplier",
+    "SupplierDetails":"An example supplier of products",
+    "PEPPOLEndpointID":"0",
+    "Country":"Sweden",
+    "City":"Lulea",
+    "Street":"Luleå University of Technology",
+    "Postcode":"SE-97187",
+    "ProductList":
+    [{
+        "ProductName":"Example Product",
+        "EAN":"0",
+        "Details":"An example product to order",
+        "PricePerUnit":"123.45",
+        "Currency":"SEK",
+        "ISO4217":752,
+        "Unit":"EA"
+    }]
+}
 ```
