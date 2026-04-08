@@ -7,8 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-
-
+	
 	"database/sql"
 	_ "modernc.org/sqlite"
 )
@@ -37,9 +36,7 @@ type Supplier struct {
 
 var supplierGlobal Supplier
 var productDatabase *sql.DB
-
-var testProduct Product
-
+/*var testProduct Product
 func testProductInit() {
 	testProduct.ProductName = "Example Product"
 	testProduct.Details = "An example product to order"
@@ -48,8 +45,35 @@ func testProductInit() {
 	testProduct.Currency = "SEK"
 	testProduct.ISO4217 = 752
 	testProduct.Unit = "EA"
+}*/
+
+type ServerConfig struct {
+	SupplierInfo Supplier
+	Port int64
+	AllowAdd bool
+	FormatJSON bool
+}
+var serverConfig ServerConfig
+
+func main() {
+	configHandler()
+	//supplierGlobal.ProductList = append(supplierGlobal.ProductList, p)
+	productDB, err, closeDB := openDB()
+	if err != nil {
+		log.Fatalf("Error opening the database: %v\n", err)
+	}
+	defer closeDB()
+	productDatabase = productDB
+	http.HandleFunc("/info", infoHandler)
+	http.HandleFunc("/add", addProductHandler)
+	http.HandleFunc("/addForm", addProductFormHandler)
+	fmt.Printf("Using port: %d\n",serverConfig.Port)
+	fmt.Printf("Allow adding products through http: %t\n", serverConfig.AllowAdd) 
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d",serverConfig.Port), nil))
+	
 }
 
+//HTTP HANDLERS----------------------------------------------------------------
 func infoHandler(w http.ResponseWriter, r *http.Request) {
 	UpdateList(productDatabase,&supplierGlobal)
 	var b, _ = json.Marshal(supplierGlobal)
@@ -108,14 +132,7 @@ func addProductFormHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type ServerConfig struct {
-	SupplierInfo Supplier
-	Port int64
-	AllowAdd bool
-	FormatJSON bool
-}
-var serverConfig ServerConfig
-
+//CONFIG HANDLING--------------------------------------------------------------
 func configHandler() error{
 	
 	// Check if config exists
@@ -144,6 +161,7 @@ func configHandler() error{
 }
 
 func createConfig() error {
+	//Defaults
 	supplierGlobal.SupplierName = "Example Supplier"
 	supplierGlobal.SupplierDetails = "An example supplier of products"
 	supplierGlobal.PEPPOLEndpointID = "0"
@@ -155,12 +173,14 @@ func createConfig() error {
 	serverConfig.AllowAdd = false
 	serverConfig.Port = 934
 	serverConfig.FormatJSON = false
+	//Make json
 	b, berr := json.MarshalIndent(serverConfig,"","\t")
 	fmt.Println(string(b))
 	if berr != nil {
 		fmt.Errorf("error making json: %w", berr)
 		return berr
 	}
+	//Create config with defaults
 	err := os.WriteFile("config.json", b, 0644)
 	if err != nil {
 		fmt.Errorf("error creating config.json: %w", err)
@@ -169,24 +189,7 @@ func createConfig() error {
 	return nil
 }
 
-func main() {
-	configHandler()
-	//supplierGlobal.ProductList = append(supplierGlobal.ProductList, p)
-	productDB, err, closeDB := openDB()
-	if err != nil {
-		log.Fatalf("Error opening the database: %v\n", err)
-	}
-	defer closeDB()
-	productDatabase = productDB
-	http.HandleFunc("/info", infoHandler)
-	http.HandleFunc("/add", addProductHandler)
-	http.HandleFunc("/addForm", addProductFormHandler)
-	fmt.Printf("Using port: %d\n",serverConfig.Port)
-	fmt.Printf("Allow adding products through http: %t\n", serverConfig.AllowAdd) 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d",serverConfig.Port), nil))
-	
-}
-
+//DATABASE---------------------------------------------------------------------
 func openDB() (*sql.DB, error, func()) {
 	dbPath := "products.db"
 

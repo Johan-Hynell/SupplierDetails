@@ -6,6 +6,7 @@ A simple service that provides information about you (the supplier) to buyers fo
 - The default port and supplier details can be changed in config.json
 - Currently the path used to get the suppliers information is ```/info```
 - Modifying the product list can be done through http if ```AllowAdd``` is set to true in config or through accessing the database locally
+- Server must be restarted to update config if config.json is changed
 
 ## Paths
 - ```/info``` to get supplier details and product list
