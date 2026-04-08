@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	
+
 	"database/sql"
 	_ "modernc.org/sqlite"
 )
@@ -68,15 +68,21 @@ func main() {
 	http.HandleFunc("/add", addProductHandler)
 	http.HandleFunc("/addForm", addProductFormHandler)
 	fmt.Printf("Using port: %d\n",serverConfig.Port)
-	fmt.Printf("Allow adding products through http: %t\n", serverConfig.AllowAdd) 
+	fmt.Printf("Allow adding products through http: %t\n", serverConfig.AllowAdd)
+	fmt.Printf("Format json output (tabs and newlines): %t\n", serverConfig.FormatJSON)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d",serverConfig.Port), nil))
-	
 }
 
 //HTTP HANDLERS----------------------------------------------------------------
 func infoHandler(w http.ResponseWriter, r *http.Request) {
 	UpdateList(productDatabase,&supplierGlobal)
-	var b, _ = json.Marshal(supplierGlobal)
+	var b []byte
+	if serverConfig.FormatJSON {
+		b, _ = json.MarshalIndent(supplierGlobal,"","\t")
+	} else {
+		b, _ = json.Marshal(supplierGlobal)
+	}
+	
 	fmt.Fprint(w, string(b))
 }
 

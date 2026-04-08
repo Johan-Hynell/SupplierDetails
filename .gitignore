@@ -2,3 +2,4 @@ go.mod
 ignore
 go.sum
 products.db
+config.json

@@ -24,7 +24,7 @@ A simple service that provides information about you (the supplier) to buyers fo
 - Code cleanup
 
 ## Example output
-Real output does not contain linebreaks or tabs
+Real output does not contain linebreaks or tabs unless ```FormatJSON``` is set true in config
 ```json
 {
     "SupplierName":"Example Supplier",
