@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+
 
 	"database/sql"
 	_ "modernc.org/sqlite"
@@ -13,12 +15,12 @@ import (
 
 type Product struct {
 	ProductName	 string
-	ProductID	 int16
+	ProductID	 int64
 	EAN       	 string
 	Details      string
 	PricePerUnit string
 	Currency     string
-	ISO4217      int16
+	ISO4217      int64
 	Unit         string
 }
 
@@ -42,6 +44,16 @@ var productDatabase *sql.DB
 
 var testProduct Product
 
+func testProductInit()
+{
+	testProduct.ProductName = "Example Product"
+	testProduct.Details = "An example product to order"
+	testProduct.EAN = "0"
+	testProduct.PricePerUnit = "123.45"
+	testProduct.Currency = "SEK"
+	testProduct.ISO4217 = 752
+	testProduct.Unit = "EA"
+}
 
 func testHandler(w http.ResponseWriter, r *http.Request) {
 	UpdateList(productDatabase,&sup)
@@ -49,12 +61,51 @@ func testHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addProductHandler(w http.ResponseWriter, r *http.Request) {
-	err := addProduct(productDatabase, testProduct)
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Fprint(w, "error parsing request")
+		return
+	}
+	fmt.Println(r.PostForm.Get("pid"))
+	pid, pidErr := strconv.ParseInt(r.PostForm.Get("pid"),10,64)
+	if pidErr != nil {
+		fmt.Println(pidErr)
+		fmt.Fprint(w, "error parsing Product ID, must be an integer")
+		return
+	}
+	iso4217,  iso4217err := strconv.ParseInt(r.PostForm.Get("iso4217"),10,64)
+	if iso4217err != nil {
+		fmt.Fprint(w, "error parsing ISO4217, must be an integer")
+		return
+	}
+	productToAdd := Product{
+		ProductName: r.PostForm.Get("name"),
+		ProductID: pid,
+		EAN: r.PostForm.Get("ean"),
+		PricePerUnit: r.PostForm.Get("ppu"),
+		Details: r.PostForm.Get("details"),
+		Currency: r.PostForm.Get("currency"),
+		ISO4217: iso4217,
+		Unit: r.PostForm.Get("unit"),
+	}
+
+	err = addProduct(productDatabase, productToAdd)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Fprint(w,"error adding product")
 	} else {
 		fmt.Fprint(w,"added")
+	}
+}
+
+func addProductFormHandler(w http.ResponseWriter, r *http.Request) {
+	b, err := os.ReadFile("addProductForm.html")
+	if err != nil {
+		fmt.Println("error gettig form: ", err)
+		fmt.Fprint(w, "error getting form")
+	} else {
+		html := string(b)
+		fmt.Fprint(w, html)
 	}
 }
 
@@ -66,13 +117,7 @@ func main() {
 	sup.City = "Lulea"
 	sup.Street = "Luleå University of Technology"
 	sup.Postcode = "SE-97187"
-	testProduct.ProductName = "Example Product"
-	testProduct.Details = "An example product to order"
-	testProduct.EAN = "0"
-	testProduct.PricePerUnit = "123.45"
-	testProduct.Currency = "SEK"
-	testProduct.ISO4217 = 752
-	testProduct.Unit = "EA"
+	
 	
 
 	//sup.ProductList = append(sup.ProductList, p)
@@ -84,6 +129,7 @@ func main() {
 	productDatabase = productDB
 	http.HandleFunc("/info", testHandler)
 	http.HandleFunc("/add", addProductHandler)
+	http.HandleFunc("/addForm", addProductFormHandler)
 	log.Fatal(http.ListenAndServe(":934", nil))
 	
 }
@@ -176,34 +222,3 @@ func addProduct(db *sql.DB, prod Product) error {
 	}
 	return nil
 }
-/*
-func InsertOrder(db *sql.DB, order *PenHolderOrder_v1) (int, error) {
-	query := `
-	INSERT INTO PenHolderOrders (
-		Name, Email, Height, Depth, Roughness,  OrderedTimestamp, CompletedTimestamp,
-		 ProductionLine, Version
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-	`
-
-	// Execute the insertion
-	result, err := db.Exec(query,
-		order.Name, order.Email, order.Height, order.Depth, order.Roughness,
-		order.OrderedTimestamp, order.CompletedTimestamp,
-		order.ProductionLine, order.Version,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("error inserting order: %w", err)
-	}
-
-	// Get the last inserted ID
-	newID, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("error retrieving last insert ID: %w", err)
-	}
-
-	// Update struct with the new ID
-	order.OrderNumber = int(newID)
-
-	return order.OrderNumber, nil
-}
-*/
