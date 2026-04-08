@@ -1,0 +1,14 @@
+{
+	"SupplierInfo": {
+		"SupplierName": "Example Supplier",
+		"SupplierDetails": "An example supplier of products",
+		"PEPPOLEndpointID": "0",
+		"Country": "Sweden",
+		"City": "Lulea",
+		"Street": "Luleå University of Technology",
+		"Postcode": "SE-97187",
+		"ProductList": null
+	},
+	"Port": 934,
+	"AllowAdd": false
+}

@@ -44,8 +44,7 @@ var productDatabase *sql.DB
 
 var testProduct Product
 
-func testProductInit()
-{
+func testProductInit() {
 	testProduct.ProductName = "Example Product"
 	testProduct.Details = "An example product to order"
 	testProduct.EAN = "0"
@@ -55,7 +54,7 @@ func testProductInit()
 	testProduct.Unit = "EA"
 }
 
-func testHandler(w http.ResponseWriter, r *http.Request) {
+func infoHandler(w http.ResponseWriter, r *http.Request) {
 	UpdateList(productDatabase,&sup)
 	fmt.Fprint(w, supplierJSON(sup))
 }
@@ -69,7 +68,6 @@ func addProductHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.PostForm.Get("pid"))
 	pid, pidErr := strconv.ParseInt(r.PostForm.Get("pid"),10,64)
 	if pidErr != nil {
-		fmt.Println(pidErr)
 		fmt.Fprint(w, "error parsing Product ID, must be an integer")
 		return
 	}
@@ -90,6 +88,10 @@ func addProductHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = addProduct(productDatabase, productToAdd)
+	if !serverConfig.AllowAdd {
+		fmt.Fprint(w, "Adding products through http is disabled")
+		return
+	}
 	if err != nil {
 		fmt.Println(err)
 		fmt.Fprint(w,"error adding product")
@@ -109,7 +111,41 @@ func addProductFormHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
+type ServerConfig struct {
+	SupplierInfo Supplier
+	Port int64
+	AllowAdd bool
+}
+var serverConfig ServerConfig
+
+func configHandler() error{
+	
+	// Check if config exists
+	_, err := os.Stat("config.json")
+	if os.IsNotExist(err) {
+		fmt.Println("config.json does not exist, attempting to create it...")
+		createConfig()
+	} else if err != nil {
+		fmt.Errorf("error checking config.json: %w", err)
+		return err
+	}
+	// Get config contents
+	var b []byte
+	b, err = os.ReadFile("config.json")
+	if err != nil {
+		fmt.Errorf("error reading config.json: %w", err)
+		return err
+	}
+	err = json.Unmarshal(b, &serverConfig)
+	if err != nil {
+		fmt.Errorf("error parsing config.json: %w", err)
+		return err
+	}
+	sup = serverConfig.SupplierInfo
+	return nil
+}
+
+func createConfig() error {
 	sup.SupplierName = "Example Supplier"
 	sup.SupplierDetails = "An example supplier of products"
 	sup.PEPPOLEndpointID = "0"
@@ -117,9 +153,25 @@ func main() {
 	sup.City = "Lulea"
 	sup.Street = "Luleå University of Technology"
 	sup.Postcode = "SE-97187"
-	
-	
+	serverConfig.SupplierInfo = sup
+	serverConfig.AllowAdd = false
+	serverConfig.Port = 934
+	b, berr := json.MarshalIndent(serverConfig,"","\t")
+	fmt.Println(string(b))
+	if berr != nil {
+		fmt.Errorf("error making json: %w", berr)
+		return berr
+	}
+	err := os.WriteFile("config.json", b, 0644)
+	if err != nil {
+		fmt.Errorf("error creating config.json: %w", err)
+		return err
+	}
+	return nil
+}
 
+func main() {
+	configHandler()
 	//sup.ProductList = append(sup.ProductList, p)
 	productDB, err, closeDB := openDB()
 	if err != nil {
@@ -130,7 +182,9 @@ func main() {
 	http.HandleFunc("/info", testHandler)
 	http.HandleFunc("/add", addProductHandler)
 	http.HandleFunc("/addForm", addProductFormHandler)
-	log.Fatal(http.ListenAndServe(":934", nil))
+	fmt.Printf("Using port: %d\n",serverConfig.Port)
+	fmt.Printf("Allow adding products through http: %t\n", serverConfig.AllowAdd) 
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d",serverConfig.Port), nil))
 	
 }
 
