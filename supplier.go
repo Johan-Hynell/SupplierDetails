@@ -56,8 +56,10 @@ type ServerConfig struct {
 var serverConfig ServerConfig
 
 func main() {
-	configHandler()
-	//supplierGlobal.ProductList = append(supplierGlobal.ProductList, p)
+	err := configHandler()
+	if err != nil {
+		log.Fatalf("Error with config: %v\n",err)
+	}
 	productDB, err, closeDB := openDB()
 	if err != nil {
 		log.Fatalf("Error opening the database: %v\n", err)
@@ -87,20 +89,24 @@ func infoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addProductHandler(w http.ResponseWriter, r *http.Request) {
+	if !serverConfig.AllowAdd {
+		http.Error(w, "Adding products through http is disabled", http.StatusForbidden)
+		return
+	}
 	err := r.ParseForm()
 	if err != nil {
-		fmt.Fprint(w, "error parsing request")
+		http.Error(w, "error parsing request", http.StatusBadRequest)
 		return
 	}
 	fmt.Println(r.PostForm.Get("pid"))
 	pid, pidErr := strconv.ParseInt(r.PostForm.Get("pid"),10,64)
 	if pidErr != nil {
-		fmt.Fprint(w, "error parsing Product ID, must be an integer")
+		http.Error(w, "error parsing Product ID, must be an integer", http.StatusBadRequest)
 		return
 	}
 	iso4217,  iso4217err := strconv.ParseInt(r.PostForm.Get("iso4217"),10,64)
 	if iso4217err != nil {
-		fmt.Fprint(w, "error parsing ISO4217, must be an integer")
+		http.Error(w, "error parsing ISO4217, must be an integer", http.StatusBadRequest)
 		return
 	}
 	productToAdd := Product{
@@ -115,10 +121,7 @@ func addProductHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = addProduct(productDatabase, productToAdd)
-	if !serverConfig.AllowAdd {
-		fmt.Fprint(w, "Adding products through http is disabled")
-		return
-	}
+	
 	if err != nil {
 		fmt.Println(err)
 		fmt.Fprint(w,"error adding product")
