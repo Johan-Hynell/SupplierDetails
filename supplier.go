@@ -35,11 +35,7 @@ type Supplier struct {
 	ProductList      []Product
 }
 
-func supplierJSON(s Supplier) string {
-	var b, _ = json.Marshal(s)
-	return string(b)
-}
-var sup Supplier
+var supplierGlobal Supplier
 var productDatabase *sql.DB
 
 var testProduct Product
@@ -55,8 +51,9 @@ func testProductInit() {
 }
 
 func infoHandler(w http.ResponseWriter, r *http.Request) {
-	UpdateList(productDatabase,&sup)
-	fmt.Fprint(w, supplierJSON(sup))
+	UpdateList(productDatabase,&supplierGlobal)
+	var b, _ = json.Marshal(supplierGlobal)
+	fmt.Fprint(w, string(b))
 }
 
 func addProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +112,7 @@ type ServerConfig struct {
 	SupplierInfo Supplier
 	Port int64
 	AllowAdd bool
+	FormatJSON bool
 }
 var serverConfig ServerConfig
 
@@ -141,21 +139,22 @@ func configHandler() error{
 		fmt.Errorf("error parsing config.json: %w", err)
 		return err
 	}
-	sup = serverConfig.SupplierInfo
+	supplierGlobal = serverConfig.SupplierInfo
 	return nil
 }
 
 func createConfig() error {
-	sup.SupplierName = "Example Supplier"
-	sup.SupplierDetails = "An example supplier of products"
-	sup.PEPPOLEndpointID = "0"
-	sup.Country = "Sweden"
-	sup.City = "Lulea"
-	sup.Street = "Luleå University of Technology"
-	sup.Postcode = "SE-97187"
-	serverConfig.SupplierInfo = sup
+	supplierGlobal.SupplierName = "Example Supplier"
+	supplierGlobal.SupplierDetails = "An example supplier of products"
+	supplierGlobal.PEPPOLEndpointID = "0"
+	supplierGlobal.Country = "Sweden"
+	supplierGlobal.City = "Lulea"
+	supplierGlobal.Street = "Luleå University of Technology"
+	supplierGlobal.Postcode = "SE-97187"
+	serverConfig.SupplierInfo = supplierGlobal
 	serverConfig.AllowAdd = false
 	serverConfig.Port = 934
+	serverConfig.FormatJSON = false
 	b, berr := json.MarshalIndent(serverConfig,"","\t")
 	fmt.Println(string(b))
 	if berr != nil {
@@ -172,14 +171,14 @@ func createConfig() error {
 
 func main() {
 	configHandler()
-	//sup.ProductList = append(sup.ProductList, p)
+	//supplierGlobal.ProductList = append(supplierGlobal.ProductList, p)
 	productDB, err, closeDB := openDB()
 	if err != nil {
 		log.Fatalf("Error opening the database: %v\n", err)
 	}
 	defer closeDB()
 	productDatabase = productDB
-	http.HandleFunc("/info", testHandler)
+	http.HandleFunc("/info", infoHandler)
 	http.HandleFunc("/add", addProductHandler)
 	http.HandleFunc("/addForm", addProductFormHandler)
 	fmt.Printf("Using port: %d\n",serverConfig.Port)
@@ -242,13 +241,13 @@ func CreateTableIfNotExists(db *sql.DB) error {
 	return nil
 }
 
-func UpdateList(db *sql.DB, sup *Supplier) error {
+func UpdateList(db *sql.DB, supplierGlobal *Supplier) error {
 	query := `SELECT * FROM Products;`
 	result, err := db.Query(query)
 	if err != nil {
 		return fmt.Errorf("error fetching products: %w", err)
 	}
-	sup.ProductList = nil
+	supplierGlobal.ProductList = nil
 	for result.Next() {
 		var prod Product
 		err := result.Scan(&prod.ProductName, &prod.ProductID,
@@ -257,7 +256,7 @@ func UpdateList(db *sql.DB, sup *Supplier) error {
 		if(err != nil) {
 			return fmt.Errorf("error fetching products: %w", err)
 		}
-		sup.ProductList = append(sup.ProductList, prod)
+		supplierGlobal.ProductList = append(supplierGlobal.ProductList, prod)
 	}	
 	return nil
 }
